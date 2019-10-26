@@ -12,10 +12,66 @@ namespace FortnoxAPILibrary
     /// <remarks/>
     public class UrlRequestBase
     {
-        /// <summary>
-        /// Timeout of requests sent to the Fortnox API in miliseconds
-        /// </summary>
-        public int Timeout { get; set; }
+		string clientSecret;
+
+		string accessToken;
+
+		/// <summary>
+		/// Optional Fortnox Client Secret, if used it will override the static version.
+		/// </summary>
+		/// <exception cref="Exception">Exception will be thrown if client secret is not set.</exception>
+		public string ClientSecret
+		{
+			get
+			{
+				if (!string.IsNullOrEmpty(this.clientSecret))
+				{
+					return this.clientSecret;
+				}
+
+				if (!string.IsNullOrEmpty(ConnectionCredentials.ClientSecret))
+				{
+					return ConnectionCredentials.ClientSecret;
+				}
+
+				throw new Exception("Fortnox Client Secret must be set.");
+			}
+			set
+			{
+				this.clientSecret = value;
+			}
+		}
+
+		/// <summary>
+		/// Optional Fortnox Access Token, if used it will override the static version.
+		/// </summary>
+		/// /// <exception cref="Exception">Exception will be thrown if access token is not set.</exception>
+		public string AccessToken
+		{
+			get
+			{
+				if (!string.IsNullOrEmpty(this.accessToken))
+				{
+					return this.accessToken;
+				}
+
+				if (!string.IsNullOrEmpty(ConnectionCredentials.AccessToken))
+				{
+					return ConnectionCredentials.AccessToken;
+				}
+
+				throw new Exception("Fortnox Access Token must be set.");
+			}
+			set
+			{
+				this.accessToken = value;
+			}
+		}
+
+		/// <summary>
+		/// Timeout of requests sent to the Fortnox API in miliseconds
+		/// </summary>
+		public int Timeout { get; set; }
 
         /// <remarks/>
         public FortnoxError.ErrorInformation Error { get; set; }
@@ -77,8 +133,6 @@ namespace FortnoxAPILibrary
             return requestUriString;
         }
 
-        public AlternativeConnectionCredentials AlternativeConnectionCredentials { get; set; }
-
         /// <summary>
         /// This method is used to setup the WebRequest used in every call to Fortnox. 
         /// </summary>
@@ -94,21 +148,10 @@ namespace FortnoxAPILibrary
         internal HttpWebRequest SetupRequest(string requestUriString, string method)
         {
             Error = null;
-            var accessToken = ConnectionCredentials.AccessToken;
-            var clientSecret = ConnectionCredentials.ClientSecret;
-            if (AlternativeConnectionCredentials != null)
-            {
-                accessToken = AlternativeConnectionCredentials.AccessToken;
-                clientSecret = AlternativeConnectionCredentials.ClientSecret;
-            }
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(clientSecret))
-            {
-                throw new Exception("Access-Token and Client-Secret must be set");
-            }
 
             HttpWebRequest wr = (HttpWebRequest)HttpWebRequest.Create(requestUriString);
-            wr.Headers.Add("access-token", accessToken);
-            wr.Headers.Add("client-secret", clientSecret);
+            wr.Headers.Add("access-token", this.AccessToken);
+            wr.Headers.Add("client-secret", this.ClientSecret);
             wr.ContentType = "application/xml";
             wr.Accept = "application/xml";
             wr.Method = method;
@@ -232,7 +275,7 @@ namespace FortnoxAPILibrary
             return entity;
         }
 
-        internal T UploadFile<T>(string localPath)
+        internal T UploadFile<T>(string localPath, byte[] fileData = null, string fileName = null)
         {
             this.ResponseXml = "";
 
@@ -240,11 +283,18 @@ namespace FortnoxAPILibrary
 
             try
             {
-                XmlSerializer xs = new XmlSerializer(typeof(T));
+				// prepp name and data
+				if (fileData == null)
+				{
+					fileName = System.IO.Path.GetFileName(localPath);
+					fileData = System.IO.File.ReadAllBytes(localPath);
+				}
+
+				XmlSerializer xs = new XmlSerializer(typeof(T));
 
                 Random rand = new Random();
                 string boundary = "----boundary" + rand.Next().ToString();
-                byte[] header = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"file_path\"; filename=\"" + System.IO.Path.GetFileName(localPath) + "\"\r\nContent-Type: application/octet-stream\r\n\r\n");
+                byte[] header = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"file_path\"; filename=\"" + fileName + "\"\r\nContent-Type: application/octet-stream\r\n\r\n");
                 byte[] trailer = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "--\r\n");
 
                 HttpWebRequest request = this.SetupRequest(this.RequestUriString, "POST");
@@ -253,8 +303,7 @@ namespace FortnoxAPILibrary
                 using (Stream data_stream = request.GetRequestStream())
                 {
                     data_stream.Write(header, 0, header.Length);
-                    byte[] file_bytes = System.IO.File.ReadAllBytes(localPath);
-                    data_stream.Write(file_bytes, 0, file_bytes.Length);
+                    data_stream.Write(fileData, 0, fileData.Length);
                     data_stream.Write(trailer, 0, trailer.Length);
                     data_stream.Close();
 
@@ -283,7 +332,7 @@ namespace FortnoxAPILibrary
             return result;
         }
 
-        internal void DownloadFile(string idOrPath, string localPath)
+        internal void DownloadFile(string idOrPath, string localPath, File file = null)
         {
             this.ResponseXml = "";
 
@@ -310,10 +359,24 @@ namespace FortnoxAPILibrary
                     httpStatusCode = response.StatusCode;
                     using (Stream responseStream = response.GetResponseStream())
                     {
-                        WriteStream(responseStream);
-                    }
-                }
-            }
+						if (file == null)
+						{
+							// hdd
+							WriteStream(responseStream);
+						}
+						else
+						{
+							// memory                          
+							using (var ms = new System.IO.MemoryStream())
+							{
+								file.ContentType = response.Headers["Content-Type"];
+								responseStream.CopyTo(ms);
+								file.Data = ms.ToArray();								
+							}
+						}
+					}
+				}
+			}
             catch (WebException we)
             {
                 Error = this.HandleException(we);
