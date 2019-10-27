@@ -106,6 +106,7 @@ namespace FortnoxAPILibrary
 		public SupplierInvoice()
         {
             this.SupplierInvoiceRows = new List<SupplierInvoiceRow>();
+            this.Vouchers = new List<SupplierInvoiceVoucherRow>();
         }
 
 		/// <summary>This field is Read-Only in Fortnox</summary>
@@ -571,6 +572,10 @@ namespace FortnoxAPILibrary
             }
         }
 
+        [System.Xml.Serialization.XmlArrayItemAttribute("Vouchers", typeof(SupplierInvoiceVoucherRow), Form = System.Xml.Schema.XmlSchemaForm.Unqualified, IsNullable = false)]
+        [XmlArrayItem(ElementName = "Voucher")]
+        public List<SupplierInvoiceVoucherRow> Vouchers { get; set; }
+
         /// <summary>This field is Read-Only in Fortnox</summary>
         [System.ComponentModel.ReadOnly(true)]
         [System.Xml.Serialization.XmlAttributeAttribute()]
@@ -599,6 +604,18 @@ namespace FortnoxAPILibrary
 			}
 		}
 	}
+
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "2.0.50727.1432")]
+    [System.SerializableAttribute()]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true)]
+    public partial class SupplierInvoiceVoucherRow
+    {
+        public string Number { get; set; }
+        public string Year { get; set; }
+        public string Series { get; set; }
+    }
 
     /// <remarks/>
     [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "2.0.50727.1432")]
