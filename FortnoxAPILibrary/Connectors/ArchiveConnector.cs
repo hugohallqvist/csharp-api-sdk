@@ -148,11 +148,11 @@ namespace FortnoxAPILibrary.Connectors
 			return base.BaseUploadFile(localPath, folderId);
 		}
 
-		/// <summary>
-		/// Uploads a file to Fortnox Archive from provided data array.
-		/// </summary>
-		/// <returns>Created file.</returns>
-		public File UploadFileData(byte[] data, string name, string folderId = "")
+	    /// <summary>
+	    /// Uploads a file to Fortnox Archive from provided data array.
+	    /// </summary>
+	    /// <returns>Created file.</returns>
+	    public File UploadFileData(byte[] data, string name, string folderId = "", string contentType = null)
 		{
 			if (data == null) throw new ArgumentNullException("File data must be set.");
 
@@ -164,7 +164,8 @@ namespace FortnoxAPILibrary.Connectors
 
 			var uploadedFile = base.BaseUploadFile("", folderId, data, name);
 
-			uploadedFile.ContentType = System.Web.MimeMapping.GetMimeMapping(name); // as good as archive...
+			//uploadedFile.ContentType = System.Web.MimeMapping.GetMimeMapping(name); // as good as archive...
+		    uploadedFile.ContentType = contentType;
 
 			uploadedFile.Data = new byte[data.Length];
 
